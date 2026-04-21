@@ -25,7 +25,7 @@ async def verificar_ingresso():
 
         for url in URLS:
             await page.goto(url)
-            await page.wait_for_timeout(5000)
+            await page.wait_for_timeout(3000)
 
             botao = await page.query_selector("button:has-text('Comprar')")
 
@@ -54,6 +54,6 @@ async def main():
         except Exception as e:
             print("Erro:", e)
 
-        time.sleep(15)
+        time.sleep(25)
 
 asyncio.run(main())
