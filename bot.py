@@ -2,10 +2,10 @@ import asyncio
 from playwright.async_api import async_playwright
 import requests
 import time
+import os
 
-# CONFIGURAÇÃO
-TOKEN = "8714367090:AAEJFWmnGSOwQOGpLvi81zI1ARrcB6eslGg"
-CHAT_ID = "8192424458"
+TOKEN = os.getenv("TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
 def enviar_alerta(msg):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -38,7 +38,7 @@ async def verificar_ingresso():
 
 async def main():
     print("Bot iniciado...")
-    enviar_alerta("🚀 TESTE - BOT FUNCIONANDO")
+    enviar_alerta("🚀 BOT ONLINE!")
 
     while True:
         try:
