@@ -1,59 +1,65 @@
 import asyncio
 from playwright.async_api import async_playwright
 import requests
-import time
 import os
 
 TOKEN = os.getenv("TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
+URLS = [
+    "https://www.ticketmaster.com.br/event/venda-geral-bts-world-tour-arirang-28-10",
+    "https://www.ticketmaster.com.br/event/venda-geral-bts-world-tour-arirang-30-10",
+    "https://www.ticketmaster.com.br/event/venda-geral-bts-world-tour-arirang-31-10"
+]
+
 def enviar_alerta(msg):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     data = {"chat_id": CHAT_ID, "text": msg}
-    requests.post(url, data=data)
+    requests.post(url, data=data, timeout=5)
 
-async def verificar_ingresso():
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
+async def checar_url(browser, url):
+    page = await browser.new_page()
+    await page.goto(url)
+    await page.wait_for_load_state("domcontentloaded")
 
-        URLS = [
-            "https://www.ticketmaster.com.br/event/bts-world-tour-arirang-dia-28",
-            "https://www.ticketmaster.com.br/event/bts-world-tour-arirang-dia-30",
-            "https://www.ticketmaster.com.br/event/bts-world-tour-arirang-dia-31"
-        ]
+    botao = await page.query_selector("button:has-text('Comprar')")
+    await page.close()
 
-        for url in URLS:
-            await page.goto(url)
-            await page.wait_for_timeout(3000)
-
-            botao = await page.query_selector("button:has-text('Comprar')")
-
-            if botao:
-                await browser.close()
-                return url
-
-        await browser.close()
-        return None
+    return url if botao else None
 
 async def main():
     print("Bot iniciado...")
-    enviar_alerta("🚀 BOT ONLINE!")
+    enviar_alerta("🚀 BOT ONLINE")
 
-    while True:
-        try:
-            url = await verificar_ingresso()
+    ultimo_alerta = None
 
-            if url:
-                enviar_alerta(f"🚨 INGRESSO DISPONÍVEL!\n{url}")
-                print("Ingresso encontrado!")
-                time.sleep(60)
-            else:
-                print("Nada ainda...")
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
 
-        except Exception as e:
-            print("Erro:", e)
+        while True:
+            try:
+                tasks = [checar_url(browser, url) for url in URLS]
+                resultados = await asyncio.gather(*tasks)
 
-        time.sleep(25)
+                url_encontrada = None
+                for r in resultados:
+                    if r:
+                        url_encontrada = r
+                        break
+
+                if url_encontrada:
+                    if url_encontrada != ultimo_alerta:
+                        enviar_alerta(f"🚨 INGRESSO DISPONÍVEL!\n{url_encontrada}")
+                        print("Ingresso encontrado!")
+                        ultimo_alerta = url_encontrada
+
+                    await asyncio.sleep(25)
+                else:
+                    print("Nada ainda...")
+
+            except Exception as e:
+                print("Erro:", e)
+
+            await asyncio.sleep(15)
 
 asyncio.run(main())
